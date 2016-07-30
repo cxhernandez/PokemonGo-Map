@@ -8,11 +8,13 @@ from flask import Flask, jsonify, render_template, request
 from flask.json import JSONEncoder
 from flask_compress import Compress
 from datetime import datetime
+from datetime import timedelta
 from s2sphere import *
 from pogom.utils import get_args
 
 from . import config
 from .models import Pokemon, Gym, Pokestop, ScannedLocation
+from .pgoapi.utilities import get_pogo_server_status
 
 log = logging.getLogger(__name__)
 compress = Compress()
@@ -26,7 +28,7 @@ class Pogom(Flask):
         self.route("/", methods=['GET'])(self.fullmap)
         self.route("/raw_data", methods=['GET'])(self.raw_data)
         self.route("/loc", methods=['GET'])(self.loc)
-        self.route("/next_loc", methods=['POST'])(self.next_loc)
+        self.route("/server_status", methods=['GET'])(self.server_status)
         self.route("/mobile", methods=['GET'])(self.list_pokemon)
 
     def fullmap(self):
@@ -39,7 +41,9 @@ class Pogom(Flask):
                                lat=config['ORIGINAL_LATITUDE'],
                                lng=config['ORIGINAL_LONGITUDE'],
                                gmaps_key=config['GMAPS_KEY'],
+                               ga_key=config['GA_KEY'],
                                lang=config['LOCALE'],
+                               server_status=config['POGO_SERVER_STATUS'],
                                is_fixed=display
                                )
 
@@ -76,26 +80,15 @@ class Pogom(Flask):
 
         return jsonify(d)
 
-    def next_loc(self):
-        args = get_args()
-        if args.fixed_location:
-            return 'Location searching is turned off', 403
-        # part of query string
-        if request.args:
-            lat = request.args.get('lat', type=float)
-            lon = request.args.get('lon', type=float)
-        # from post requests
-        if request.form:
-            lat = request.form.get('lat', type=float)
-            lon = request.form.get('lon', type=float)
+    def server_status(self):
 
-        if not (lat and lon):
-            log.warning('Invalid next location: %s,%s' % (lat, lon))
-            return 'bad parameters', 400
-        else:
-            config['NEXT_LOCATION'] = {'lat': lat, 'lon': lon}
-            log.info('Changing next location: %s,%s' % (lat, lon))
-            return 'ok'
+        if ((config['POGO_SERVER_STATUS']['timestamp'] +
+             timedelta(minutes=1)) <
+                datetime.utcnow()):
+            config['POGO_SERVER_STATUS']['status'] = get_pogo_server_status()
+            config['POGO_SERVER_STATUS']['timestamp'] = datetime.utcnow()
+
+        return jsonify(config['POGO_SERVER_STATUS'])
 
     def list_pokemon(self):
         # todo: check if client is android/iOS/Desktop for geolink, currently

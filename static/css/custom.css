@@ -1,0 +1,38 @@
+header .block {
+  float: left;
+  font-size: 12px;
+}
+
+header .tag {
+  font-size: 100%;
+  margin-top: 3px;
+}
+
+.block.server-status {
+  float: right;
+  cursor: pointer;
+  margin-right: 1%;
+  width: 120px;
+  margin-top: -.85%;
+}
+
+.page-title {
+  cursor: pointer;
+  margin-right: 25px;
+  width: 125px;
+  float: right;
+}
+
+.title {
+  height: 20px;
+  font-size: 10px;
+}
+
+.clearfix {
+  height: 60px;
+  margin-left: 20px;
+}
+
+li.select2-selection__choice {
+  color: #f6f6f6;
+}

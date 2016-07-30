@@ -14,6 +14,7 @@ from . import config
 from .utils import get_pokemon_name, get_args, send_to_webhook
 from .transform import transform_from_wgs_to_gcj
 from .customLog import printPokemon
+from .tweet import send_pokemon_tweets
 
 log = logging.getLogger(__name__)
 
@@ -63,6 +64,7 @@ class Pokemon(BaseModel):
     pokemon_id = IntegerField()
     latitude = DoubleField()
     longitude = DoubleField()
+    encounter_time = DateTimeField()
     disappear_time = DateTimeField()
 
     @classmethod
@@ -239,6 +241,7 @@ def parse_map(map_dict, iteration_num, step, step_location):
                     'pokemon_id': p['pokemon_data']['pokemon_id'],
                     'latitude': p['latitude'],
                     'longitude': p['longitude'],
+                    'encounter_time': p['last_modified_timestamp_ms'],
                     'disappear_time': d_t
                 }
 
@@ -248,6 +251,7 @@ def parse_map(map_dict, iteration_num, step, step_location):
                     'pokemon_id': p['pokemon_data']['pokemon_id'],
                     'latitude': p['latitude'],
                     'longitude': p['longitude'],
+                    'encounter_time': p['last_modified_timestamp_ms'],
                     'disappear_time': time.mktime(d_t.timetuple())
                 }
 
@@ -292,6 +296,7 @@ def parse_map(map_dict, iteration_num, step, step_location):
     gyms_upserted = 0
 
     if pokemons and config['parse_pokemon']:
+        send_pokemon_tweets(Pokemon, pokemons)
         pokemons_upserted = len(pokemons)
         log.debug("Upserting {} pokemon".format(len(pokemons)))
         bulk_upsert(Pokemon, pokemons)

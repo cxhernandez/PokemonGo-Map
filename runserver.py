@@ -88,7 +88,15 @@ if __name__ == '__main__':
         CORS(app);
 
     config['ROOT_PATH'] = app.root_path
-    config['GMAPS_KEY'] = args.gmaps_key
+    if args.gmaps_key is not None:
+        config['GMAPS_KEY'] = args.gmaps_key
+    else:
+        config['GMAPS_KEY'] = os.environ['GOOGLE_MAPS_KEY']
+
+    if args.ga_key is not None:
+        config['GA_KEY'] = args.ga_key
+    else:
+        config['GA_KEY'] = os.environ['GOOGLE_ANALYTICS_KEY']
     config['REQ_SLEEP'] = args.scan_delay
 
     if args.no_server:

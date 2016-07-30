@@ -43,7 +43,7 @@ def get_args():
                         default=12)
     parser.add_argument('-sd', '--scan-delay',
                         help='Time delay between requests in scan threads',
-                        type=float, default=5)
+                        type=float, default=1)
     parser.add_argument('-td', '--thread-delay',
                         help='Time delay between each scan thread loop',
                         type=float, default=5)
@@ -78,13 +78,14 @@ def get_args():
                         help='Hides the search bar for use in shared maps.',
                         action='store_true', default=False)
     parser.add_argument('-k', '--gmaps-key',
-                        help='Google Maps Javascript API Key',
-                        required=True)
+                        help='Google Maps Javascript API Key')
+    parser.add_argument('-ak', '--google-analytics-key',
+                        help='Google Analytics Javascript API Key', default=None, dest='ga_key')
     parser.add_argument('-C', '--cors', help='Enable CORS on web server',
                         action='store_true', default=False)
     parser.add_argument('-D', '--db', help='Database filename',
                         default='pogom.db')
-    parser.add_argument('-t', '--num-threads', help='Number of search threads', type=int, default=1)
+    parser.add_argument('-t', '--num-threads', help='Number of search threads', type=int, default=2)
     parser.add_argument('-np', '--no-pokemon',
                         help='Disables Pokemon from the map (including parsing them into local db)',
                         action='store_true', default=False)
@@ -108,9 +109,7 @@ def get_args():
 
     if args.only_server:
         if args.location is None:
-            parser.print_usage()
-            print sys.argv[0] + ': error: arguments -l/--location is required'
-            sys.exit(1)
+            args.location = os.environ['LOCATION']
     else:
         if (args.username is None or args.location is None or args.step_limit is None):
             parser.print_usage()

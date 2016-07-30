@@ -218,7 +218,7 @@ function initMap() {
       lat: center_lat,
       lng: center_lng
     },
-    zoom: 16,
+    zoom: 14,
     fullscreenControl: true,
     streetViewControl: false,
     mapTypeControl: true,
@@ -281,50 +281,11 @@ function initMap() {
   map.setMapTypeId(Store.get('map_style'));
   google.maps.event.addListener(map, 'idle', updateMap);
 
-  var marker = createSearchMarker();
-
-  addMyLocationButton();
-  initSidebar();
-  google.maps.event.addListenerOnce(map, 'idle', function() {
-    updateMap();
-  });
 
   google.maps.event.addListener(map, 'zoom_changed', function() {
     redrawPokemon(map_data.pokemons);
     redrawPokemon(map_data.lure_pokemons);
   });
-}
-
-function createSearchMarker() {
-  marker = new google.maps.Marker({ //need to keep reference.
-    position: {
-      lat: center_lat,
-      lng: center_lng
-    },
-    map: map,
-    animation: google.maps.Animation.DROP,
-    draggable: true
-  });
-
-  var oldLocation = null;
-  google.maps.event.addListener(marker, 'dragstart', function() {
-    oldLocation = marker.getPosition();
-  });
-
-  google.maps.event.addListener(marker, 'dragend', function() {
-    var newLocation = marker.getPosition();
-    changeSearchLocation(newLocation.lat(), newLocation.lng())
-      .done(function() {
-        oldLocation = null;
-      })
-      .fail(function() {
-        if (oldLocation) {
-          marker.setPosition(oldLocation);
-        }
-      });
-  });
-
-  return marker;
 }
 
 function initSidebar() {
@@ -333,23 +294,8 @@ function initSidebar() {
   $('#pokestops-switch').prop('checked', Store.get('showPokestops'));
   $('#lured-pokestops-only-switch').val(Store.get('showLuredPokestopsOnly'));
   $('#lured-pokestops-only-wrapper').toggle(Store.get('showPokestops'));
-  $('#geoloc-switch').prop('checked', Store.get('geoLocate'));
   $('#scanned-switch').prop('checked', Store.get('showScanned'));
   $('#sound-switch').prop('checked', Store.get('playSound'));
-
-  var searchBox = new google.maps.places.SearchBox(document.getElementById('next-location'));
-  $("#next-location").css("background-color", $('#geoloc-switch').prop('checked') ? "#e0e0e0" : "#ffffff");
-
-  searchBox.addListener('places_changed', function() {
-    var places = searchBox.getPlaces();
-
-    if (places.length == 0) {
-      return;
-    }
-
-    var loc = places[0].geometry.location;
-    changeLocation(loc.lat(), loc.lng());
-  });
 
   var icons = $('#pokemon-icons');
   $.each(pokemon_sprites, function(key, value) {
@@ -726,6 +672,29 @@ function showInBoundsMarkers(markers) {
   });
 }
 
+function updateStatus() {
+  $.ajax({
+    url: "server_status",
+    type: 'GET',
+    dataType: "json"
+  }).done(function(result) {
+
+    var status_tag = $('.tag')[0];
+
+    status_tag.textContent = result.status.toUpperCase();
+    if (result.status == 'online') {
+      $('.tag')[0].className = 'tag tag-success';
+    } else if (result.status == 'unstable') {
+      $('.tag')[0].className = 'tag tag-warning';
+    } else {
+      $('.tag')[0].className = 'tag tag-danger';
+    }
+
+    console.log('updated status!');
+
+  });
+}
+
 function loadRawData() {
   var loadPokemon = Store.get('showPokemon');
   var loadGyms = Store.get('showGyms');
@@ -1031,49 +1000,6 @@ function myLocationButton(map, marker) {
   map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(locationContainer);
 }
 
-function addMyLocationButton() {
-  locationMarker = new google.maps.Marker({
-    map: map,
-    animation: google.maps.Animation.DROP,
-    position: {
-      lat: center_lat,
-      lng: center_lng
-    },
-    icon: {
-      path: google.maps.SymbolPath.CIRCLE,
-      fillOpacity: 1,
-      fillColor: '#1c8af6',
-      scale: 6,
-      strokeColor: '#1c8af6',
-      strokeWeight: 8,
-      strokeOpacity: 0.3
-    }
-  });
-  locationMarker.setVisible(false);
-
-  myLocationButton(map, locationMarker);
-
-  google.maps.event.addListener(map, 'dragend', function() {
-    var currentLocation = document.getElementById('current-location');
-    currentLocation.style.backgroundPosition = '0px 0px';
-    locationMarker.setOptions({
-      'opacity': 0.5
-    });
-  });
-}
-
-function changeLocation(lat, lng) {
-  var loc = new google.maps.LatLng(lat, lng);
-  changeSearchLocation(lat, lng).done(function() {
-    map.setCenter(loc);
-    marker.setPosition(loc);
-  });
-}
-
-function changeSearchLocation(lat, lng) {
-  return $.post("next_loc?lat=" + lat + "&lon=" + lng, {});
-}
-
 function centerMap(lat, lng, zoom) {
   var loc = new google.maps.LatLng(lat, lng);
 
@@ -1161,25 +1087,9 @@ $(function() {
   // run interval timers to regularly update map and timediffs
   window.setInterval(updateLabelDiffTime, 1000);
   window.setInterval(updateMap, 5000);
-  window.setInterval(function() {
-    if (navigator.geolocation && Store.get('geoLocate')) {
-      navigator.geolocation.getCurrentPosition(function(position) {
-        var baseURL = location.protocol + "//" + location.hostname + (location.port ? ":" + location.port : "");
-        var lat = position.coords.latitude;
-        var lon = position.coords.longitude;
+  window.setInterval(updateStatus, 30000);
+  updateStatus();
 
-        //the search function makes any small movements cause a loop. Need to increase resolution
-        if (getPointDistance(marker.getPosition(), (new google.maps.LatLng(lat, lon))) > 40) {
-          $.post(baseURL + "/next_loc?lat=" + lat + "&lon=" + lon).done(function() {
-            var center = new google.maps.LatLng(lat, lon);
-            map.panTo(center);
-            marker.setPosition(center);
-          });
-        }
-      });
-    }
-  }, 1000);
-  
   //Wipe off/restore map icons when switches are toggled
   function buildSwitchChangeListener(data, data_type, storageKey) {
     return function () {
