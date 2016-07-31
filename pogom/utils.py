@@ -34,7 +34,7 @@ def get_args():
     configpath = os.path.join(os.path.dirname(__file__), '../config/config.ini')
     parser = configargparse.ArgParser(default_config_files=[configpath])
     parser.add_argument('-a', '--auth-service', type=str.lower,
-                        help='Auth Service', default='ptc')
+                        help='Auth Service', default='google')
     parser.add_argument('-u', '--username', help='Username')
     parser.add_argument('-p', '--password', help='Password')
     parser.add_argument('-l', '--location', type=parse_unicode,
@@ -80,12 +80,12 @@ def get_args():
     parser.add_argument('-k', '--gmaps-key',
                         help='Google Maps Javascript API Key')
     parser.add_argument('-ak', '--google-analytics-key',
-                        help='Google Analytics Javascript API Key', default=None, dest='ga_key')
+                        help='Google Analytics Javascript API Key', dest='ga_key')
     parser.add_argument('-C', '--cors', help='Enable CORS on web server',
                         action='store_true', default=False)
     parser.add_argument('-D', '--db', help='Database filename',
                         default='pogom.db')
-    parser.add_argument('-t', '--num-threads', help='Number of search threads', type=int, default=2)
+    parser.add_argument('-t', '--num-threads', help='Number of search threads', type=int, default=1)
     parser.add_argument('-np', '--no-pokemon',
                         help='Disables Pokemon from the map (including parsing them into local db)',
                         action='store_true', default=False)
@@ -107,19 +107,23 @@ def get_args():
 
     args = parser.parse_args()
 
-    if args.only_server:
-        if args.location is None:
-            args.location = os.environ['LOCATION']
-    else:
-        if (args.username is None or args.location is None or args.step_limit is None):
-            parser.print_usage()
-            print sys.argv[0] + ': error: arguments -u/--username, -l/--location, -st/--step-limit are required'
-            sys.exit(1)
+    if args.location is None:
+        args.location = str(os.environ['LOCATION'])
 
-        if config["PASSWORD"] is None and args.password is None:
-            config["PASSWORD"] = args.password = getpass.getpass()
-        elif args.password is None:
-            args.password = config["PASSWORD"]
+    if args.username is None:
+        args.username = str(os.environ['POKEUSER'])
+
+    if args.password is None:
+        args.password = str(os.environ['POKEPWD'])
+
+    if args.step_limit is None:
+        args.step_limit = int(os.environ['STEP_COUNT'])
+
+    if args.ga_key is None:
+        args.ga_key = str(os.environ['GOOGLE_ANALYTICS_KEY'])
+
+    if args.gmaps_key is None:
+        args.gmaps_key = str(os.environ['GOOGLE_MAPS_KEY'])
 
     return args
 
